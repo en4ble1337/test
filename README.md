@@ -1,377 +1,129 @@
-### 📂 Recommended Repository Name: `vllm-proxmox-lxc-guide`
-
----
-
-```markdown
-# vLLM Installation Guide for Proxmox LXC with GPU Passthrough (v11)
-
-![vLLM Setup Infographic](infographic.png)
-
-## 📖 Introduction: What is vLLM?
-
-If you are just starting your AI journey, you might wonder why everyone is talking about **vLLM**.
-
-In simple terms, **vLLM is a high-performance engine that makes Large Language Models (LLMs) run faster and more efficiently on your GPU.**
-
-When standard AI programs run, they often waste a lot of GPU memory because they reserve space they don't actually use. vLLM uses a smart technology called **PagedAttention** (inspired by how operating systems manage computer RAM). It breaks memory into small, flexible "blocks" that can be moved around instantly.
-
-### Why should you use it?
-* **Speed (High Throughput):** It can handle many more requests per second than standard methods.
-* **Efficiency:** It reduces memory waste, allowing you to run larger models on the same hardware.
-* **Industry Standard:** It is the engine behind many top serving platforms (like RunPod, Modal, and others).
-
-### 🆚 vLLM vs. llama.cpp
-Choosing the right engine depends on your hardware and goals. Here is a quick comparison:
-
-| Feature | **vLLM** | **llama.cpp** |
-| :--- | :--- | :--- |
-| **Best For** | **High-performance GPU Servers** (NVIDIA/AMD) | **Consumer Hardware** (MacBooks, CPUs, older GPUs) |
-| **Primary Speed** | Extremely fast "Throughput" (serving many users) | Low "Latency" (fast response for 1 user) |
-| **Model Format** | Unquantized, AWQ, GPTQ, SqueezeLLM | **GGUF** (Highly compressed) |
-| **Memory Mgmt** | **PagedAttention** (GPU Memory optimization) | Standard Loading (Optimized for low VRAM/RAM) |
-| **Setup Difficulty** | Intermediate (Requires Linux/Drivers) | Easy (Often just one binary file) |
-| **Use Case** | Production APIs, Multi-user Chatbots, Enterprise | Local Personal Assistant, Edge Devices, Offline |
-
----
-
-## 🛠️ Environment & Prerequisites
-
-### Environment Reference
-| Component | Value |
-| :--- | :--- |
-| **Proxmox VE** | 8.4+ (Debian 12 Base) |
-| **LXC OS** | Ubuntu 22.04 |
-| **GPU** | NVIDIA RTX 30xx/40xx/50xx |
-| **NVIDIA Driver** | 580.x (Must match on Host & LXC) |
-| **CUDA Toolkit** | 12.8 (Must match on Host & LXC) |
-| **Python** | 3.10.x |
-
-### 🔗 Critical Prerequisite Guides
-You must perform these steps **before** installing vLLM.
-
-1.  **GPU Passthrough:** The LXC container must see the GPU.
-    * 👉 **[Guide: GPU Passthrough for Proxmox LXC](https://github.com/en4ble1337/GPU-Passthrough-for-Proxmox-LXC-Container)**
-2.  **BIOS Settings:** Ensure "Above 4G Decoding" and "Re-Size BAR" are enabled in your host BIOS.
-
----
-
-## PART 1: PROXMOX HOST SETUP
-
-**⚠️ CRITICAL:** Do not skip this section! Flash-attn will segfault without host CUDA. These steps are performed on the **Proxmox host**, not inside an LXC.
-
-Access via: `Proxmox web UI` → `Select node` → `Shell` (or SSH to host).
-
-### Phase 0A: Install NVIDIA Driver on Host (Manual Method)
-*Skip if already installed. Verify with `nvidia-smi`.*
-
-1.  **Download Driver (580.x or latest):**
-    ```bash
-    wget [https://us.download.nvidia.com/XFree86/Linux-x86_64/580.76.05/NVIDIA-Linux-x86_64-580.76.05.run](https://us.download.nvidia.com/XFree86/Linux-x86_64/580.76.05/NVIDIA-Linux-x86_64-580.76.05.run)
-    chmod +x NVIDIA-Linux-x86_64-580.76.05.run
-    ```
-2.  **Install Prerequisites:**
-    ```bash
-    apt update && apt install build-essential pve-headers-$(uname -r) pkg-config -y
-    ```
-3.  **Blacklist Nouveau:**
-    ```bash
-    echo "blacklist nouveau" > /etc/modprobe.d/blacklist-nouveau.conf
-    echo "options nouveau modeset=0" >> /etc/modprobe.d/blacklist-nouveau.conf
-    update-initramfs -u
-    reboot
-    ```
-4.  **Install Driver:**
-    * *Note: For RTX 50xx (Blackwell), select "MIT" drivers if prompted.*
-    ```bash
-    ./NVIDIA-Linux-x86_64-580.76.05.run --dkms
-    ```
-
-### Phase 0B: Install Prerequisites on Host
-Ensure standard build tools are present for the CUDA installer.
-```bash
-apt install build-essential linux-headers-$(uname -r) -y
-
-```
-
-### Phase 0C: Install CUDA Toolkit 12.8 on Host
-
-*Note: We install the toolkit **without** the driver to prevent overwriting your manual driver installation.*
-
-```bash
-wget [https://developer.download.nvidia.com/compute/cuda/12.8.0/local_installers/cuda-repo-debian12-12-8-local_12.8.0-570.86.10-1_amd64.deb](https://developer.download.nvidia.com/compute/cuda/12.8.0/local_installers/cuda-repo-debian12-12-8-local_12.8.0-570.86.10-1_amd64.deb)
-dpkg -i cuda-repo-debian12-12-8-local_12.8.0-570.86.10-1_amd64.deb
-cp /var/cuda-repo-debian12-12-8-local/cuda-*-keyring.gpg /usr/share/keyrings/
-apt update
-apt install cuda-toolkit-12-8 -y
-
-```
-
-### Phase 0D: Configure CUDA PATH on Host
-
-Add CUDA to your path so `nvcc` works.
-
-```bash
-echo 'export PATH=/usr/local/cuda-12.8/bin${PATH:+:${PATH}}' >> ~/.bashrc
-echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}' >> ~/.bashrc
-source ~/.bashrc
-
-```
-
-### Phase 0E: Reboot Host and Verify
-
-Reboot the host to ensure all modules are loaded.
-
-```bash
+vLLM Installation Guide for Proxmox LXC with GPU Passthrough(Placeholder for vLLM Architecture Infographic)1. Introduction: What is vLLM?If you are new to AI hosting, you might be wondering why you need vLLM instead of just running a model directly.In simple terms: vLLM is a high-speed engine that allows your computer (specifically your GPU) to serve AI models to many users at once without running out of memory.The "Bookshelf" Analogy (PagedAttention)Traditional AI engines work like a disorganized library. When a user asks a question, the engine reserves a huge, empty bookshelf just for that conversation, even if the answer is only one sentence long. This wastes a massive amount of space (VRAM).vLLM uses something called PagedAttention. It acts like a smart librarian who tears the pages out of the book and stuffs them into any tiny open slot available on any shelf. It keeps a "map" of where every page is.Result: No empty shelf space is wasted.Benefit: You can fit 2x to 4x more "conversations" (requests) into the same GPU memory.Why use vLLM?Speed: It generates text significantly faster than standard HuggingFace transformers.Efficiency: It manages memory like an Operating System, preventing "Out of Memory" errors when batching requests.Production Ready: It is designed to run as a server (API) that looks exactly like OpenAI's API.2. vLLM vs. llama.cpp: Which one do I need?Both are excellent, but they serve different purposes. Use this table to decide:FeaturevLLMllama.cppBest ForHigh-Performance Serving. Ideal if you want to host an API for multiple users or agents.Personal/Local Use. Ideal for running a model on a laptop or single consumer PC.HardwareRequires NVIDIA GPUs (mostly) with good VRAM. Optimizes for pure speed.Runs on Anything (CPU, Apple Silicon, AMD, NVIDIA). Optimizes for compatibility.Model FormatUses uncompressed weights (BF16/FP16) or GPTQ/AWQ.Uses GGUF (heavily compressed/quantized) models.ThroughputExtremely High. Can handle many requests at the exact same time.Lower. Processes requests sequentially or with lower concurrency.Memory TechPagedAttention. Sophisticated memory management for batching.mmap. Simple memory mapping, low overhead but less efficient at scale.The VerdictUse this if building a Home Lab Server or Production App.Use this if running a chatbot locally on your MacBook or Gaming PC.3. Prerequisites & Critical Resources⚠️ CRITICAL: The CUDA toolkit must be installed on BOTH the Proxmox host AND the LXC container. This is commonly missed and causes flash-attn compilation failures (segfaults).Companion GuideFor detailed instructions on configuring the LXC container, installing NVIDIA drivers, and managing the passthrough process, please refer to our dedicated guide:👉 GPU Passthrough for Proxmox LXC Container (GitHub)Use the guide above as the primary reference for Phase 1 & 2 if you encounter specific Proxmox issues.System RequirementsComponentValueProxmox VE8.4+LXC OSUbuntu 22.04GPUNVIDIA RTX 3080 (10GB VRAM) or betterNVIDIA Driver580.x (Must act on Host AND LXC)CUDA Toolkit12.8 (Must match on Host AND LXC)Python3.10.x4. Installation StepsPhase 0: Prepare the Proxmox HostThese steps must be performed on the Proxmox Node (Shell).Phase 0A: Blacklist Nouveau DriversEnsure the open-source drivers do not conflict with Nvidia.echo "blacklist nouveau" >> /etc/modprobe.d/blacklist.conf
+echo "options nouveau modeset=0" >> /etc/modprobe.d/blacklist.conf
+update-initramfs -u
 reboot
-
-```
-
-**Verification:**
-
-* `nvidia-smi` should show Driver 580.x and CUDA 12.8.
-* `nvcc --version` should show "release 12.8".
-* *If `nvidia-smi` fails:* Re-run the `.run` driver installer from Phase 0A.
-
----
-
-## PART 2: LXC CONTAINER SETUP
-
-**These steps are performed inside the LXC container.**
-
-### Phase 1: Create LXC with GPU Passthrough
-
-Create an Ubuntu 22.04 LXC using the [External Passthrough Guide](https://github.com/en4ble1337/GPU-Passthrough-for-Proxmox-LXC-Container).
-
-* **Resources:** 4+ Cores, 8GB+ RAM, 50GB Disk.
-
-### Phase 2: Install NVIDIA Driver in LXC
-
-We must install the **exact same driver version** as the host, but without the kernel modules.
-
-1. **From Proxmox Host:** Push the installer file to the LXC (replace `105` with your LXC ID).
-```bash
-pct push 105 NVIDIA-Linux-x86_64-580.76.05.run /root/NVIDIA-Linux-x86_64-580.76.05.run
-
-```
-
-
-2. **Inside LXC:** Install without kernel modules.
-```bash
-chmod +x NVIDIA-Linux-x86_64-580.76.05.run
-./NVIDIA-Linux-x86_64-580.76.05.run --no-kernel-modules
-
-```
-
-
-
-### Phase 3: Install Prerequisites in LXC
-
-```bash
-apt update && apt upgrade -y
-apt install build-essential git curl wget software-properties-common python3-pip python3-venv python3-dev -y
-
-```
-
-### Phase 4: Install CUDA Toolkit 12.8 in LXC
-
-*Same as host, but for Ubuntu 22.04.*
-
-```bash
-wget [https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin)
-mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-wget [https://developer.download.nvidia.com/compute/cuda/12.8.0/local_installers/cuda-repo-ubuntu2204-12-8-local_12.8.0-570.86.10-1_amd64.deb](https://developer.download.nvidia.com/compute/cuda/12.8.0/local_installers/cuda-repo-ubuntu2204-12-8-local_12.8.0-570.86.10-1_amd64.deb)
-dpkg -i cuda-repo-ubuntu2204-12-8-local_12.8.0-570.86.10-1_amd64.deb
-cp /var/cuda-repo-ubuntu2204-12-8-local/cuda-*-keyring.gpg /usr/share/keyrings/
+Phase 0B: Install Prerequisites on HostWe need a comprehensive set of build tools and libraries to ensure the NVIDIA drivers and CUDA toolkit compile and run correctly.apt install -y \
+    g++ \
+    freeglut3-dev \
+    build-essential \
+    libx11-dev \
+    libxmu-dev \
+    libxi-dev \
+    libglu1-mesa-dev \
+    libfreeimage-dev \
+    libglfw3-dev \
+    wget \
+    htop \
+    btop \
+    nvtop \
+    glances \
+    git \
+    pciutils \
+    cmake \
+    curl \
+    libcurl4-openssl-dev \
+    pve-headers-$(uname -r)
+Phase 0C: Install CUDA Toolkit 12.8 on HostWe will use the official NVIDIA repository to install the CUDA toolkit.wget [https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb](https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb)
+dpkg -i cuda-keyring_1.1-1_all.deb
 apt update
-apt install cuda-toolkit-12-8 -y
-
-```
-
-### Phase 5: Configure CUDA PATH in LXC
-
-```bash
-echo 'export PATH=/usr/local/cuda-12.8/bin${PATH:+:${PATH}}' >> ~/.bashrc
-echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}' >> ~/.bashrc
+apt install -y cuda-toolkit-12-8
+Phase 0D: Configure CUDA PATH on HostThis step is vital for the host to expose the correct CUDA version.# Add to .bashrc
+echo 'export PATH=/usr/local/cuda-12.8/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
 source ~/.bashrc
 
-```
+# Verify
+nvcc --version
+nvidia-smi
+Phase 1: Create LXC ContainerCreate a privileged Ubuntu 22.04 container.Uncheck "Unprivileged container" (Must be privileged).Resources: Assign at least 32GB Disk, 16GB RAM, 4-8 Cores.Phase 2: Configure Passthrough (Host Side)Refer to the Companion Guide for deep-dive details.Edit /etc/pve/lxc/YOUR-ID.conf on the host. Add the following (Verify device numbers 195 and 508 with ls -l /dev/nvidia*):# GPU Passthrough
+lxc.cgroup2.devices.allow: c 195:* rwm
+lxc.cgroup2.devices.allow: c 508:* rwm
+lxc.mount.entry: /dev/nvidia0 dev/nvidia0 none bind,optional,create=file
+lxc.mount.entry: /dev/nvidiactl dev/nvidiactl none bind,optional,create=file
+lxc.mount.entry: /dev/nvidia-uvm dev/nvidia-uvm none bind,optional,create=file
+lxc.mount.entry: /dev/nvidia-modeset dev/nvidia-modeset none bind,optional,create=file
+lxc.mount.entry: /usr/local/cuda-12.8 usr/local/cuda-12.8 none bind,ro,create=dir
+Note: The last line binds the CUDA toolkit from Host to LXC, saving space and ensuring version matching.Restart the LXC container now.Phase 3: Setup LXC Environment & Drivers⚠️ CRITICAL WARNING: CHECK DRIVERS FIRSTExpectation: Both the Proxmox Host AND the LXC Container must have NVIDIA drivers installed and recognized (nvidia-smi) before you proceed to Phase 4.If nvidia-smi is NOT working on your Host: STOP. Fix your host drivers first.If nvidia-smi is NOT working on your LXC (after performing the steps below): STOP.Solution: If you are unable to get nvidia-smi working, please follow the GPU Passthrough for Proxmox LXC Container Guide BEFORE moving forward with this guide.Access the container shell.Phase 3A: Install System Prerequisites (LXC)We must install the same build tools inside the LXC as we did on the host to ensure flash-attn can compile using the mounted CUDA toolkit.apt update && apt install -y \
+    g++ \
+    freeglut3-dev \
+    build-essential \
+    libx11-dev \
+    libxmu-dev \
+    libxi-dev \
+    libglu1-mesa-dev \
+    libfreeimage-dev \
+    libglfw3-dev \
+    wget \
+    htop \
+    btop \
+    nvtop \
+    glances \
+    git \
+    pciutils \
+    cmake \
+    curl \
+    libcurl4-openssl-dev \
+    python3-dev \
+    python3-venv
+Phase 3B: Install NVIDIA Driver (LXC)Copy the same .run file from the host to the LXC.sh NVIDIA-Linux-x86_64-*.run --no-kernel-modules
+Install OpenGL? NoRun nvidia-xconfig? NoPhase 3C: Configure CUDA PATH (LXC)Even though we mounted the CUDA folder, the LXC doesn't know where it is yet. We must add it to the path.# Add to .bashrc inside LXC
+echo 'export PATH=/usr/local/cuda-12.8/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
 
-### Phase 6: Create Python Environment
+# Verify (Critical)
+nvidia-smi   # Should show GPU
+nvcc --version # Should show CUDA 12.8
+Phase 4: Prepare Python EnvironmentWe use python venv to avoid conflicts.mkdir -p /opt/vllm
+cd /opt/vllm
 
-We use a virtual environment to avoid conflicts.
+python3 -m venv venv
+source venv/bin/activate
 
-```bash
-mkdir -p ~/vllm-project
-cd ~/vllm-project
-python3 -m venv .venv
-source .venv/bin/activate
-# Update pip
-pip install --upgrade pip setuptools wheel
-
-```
-
-### Phase 7: Install vLLM and Dependencies
-
-```bash
-pip install vllm
-# Optional: Install flash-attn manually if pre-built wheels fail, 
-# but vLLM usually includes 'flashinfer' or its own backend.
-
-```
-
-### Phase 8: Configure HuggingFace
-
-Required to download models like Llama 3 or Mistral.
-
-```bash
-pip install huggingface-hub
+# Upgrade pip (Fixes hash errors with pip 25.x)
+pip install --upgrade pip
+Phase 5: Install vLLMpip install vllm
+Phase 6: Install Flash AttentionRequired for PagedAttention performance.pip install packaging
+# This compiles from source and may take 10-20 minutes
+pip install flash-attn --no-build-isolation
+Tip: If compilation fails due to RAM, use export MAX_JOBS=1 before installing.Phase 7: HuggingFace Authentication (Optional)If you plan to use gated models (like Llama 3 or Mistral), you must authenticate.pip install huggingface_hub
 huggingface-cli login
-# Paste your token from [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+# Paste your HF Token when prompted
+Phase 8: Verify Installation (Test Script)We will generate a python script to verify that vLLM can access the GPU and that Flash Attention is working.cat << 'SCRIPT' > vllm_test_flash.py
+from vllm import LLM, SamplingParams
+import torch
 
-```
+# Check CUDA
+print(f"CUDA Available: {torch.cuda.is_available()}")
+print(f"CUDA Device: {torch.cuda.get_device_name(0)}")
 
-### Phase 9: Set Environment Variables
+# Sample Prompts
+prompts = [
+    "Hello, my name is",
+    "The president of the United States is",
+    "The capital of France is",
+    "The future of AI is",
+]
+sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
 
-Optimize for your GPU architecture.
+# Initialize vLLM (This checks PagedAttention and FlashAttn)
+llm = LLM(model="facebook/opt-125m")
 
-```bash
-# Example for RTX 30xx/40xx (Ampere/Ada)
-export TORCH_CUDA_ARCH_LIST="8.6;8.9"
-export VLLM_WORKER_MULTIPROC_METHOD=spawn
+# Generate
+outputs = llm.generate(prompts, sampling_params)
 
-```
-
----
-
-### Phase 10: 🧪 Verify Flash-Attention (Updated)
-
-We will use a comprehensive Python script to verify that vLLM is installed and using an optimized backend (Flash Attention or FlashInfer).
-
-**Copy and paste this entire block into your terminal:**
-
-```bash
-cat << 'SCRIPT' > vllm_test_flash.py
-import sys
-import os
-
-# Set environment to force usage if needed, though vLLM usually detects valid libs
-os.environ["VLLM_LOGGING_LEVEL"] = "INFO"
-
-try:
-    from vllm import LLM, SamplingParams
-    import torch
-except ImportError:
-    print("❌ Critical: vLLM or torch not installed.")
-    sys.exit(1)
-
-print("="*50)
-print("⚡ vLLM FLASH ATTENTION DIAGNOSTIC ⚡")
-print("="*50)
-
-# 1. CHECK DEPENDENCIES
-print("\n[1] Checking Acceleration Libraries:")
-drivers = []
-
-try:
-    import flash_attn
-    print(f"  ✓ flash-attn found: {flash_attn.__version__}")
-    drivers.append("flash-attn")
-except ImportError:
-    print("  - flash-attn not installed")
-
-try:
-    import flashinfer
-    print(f"  ✓ flashinfer found: {flashinfer.__version__}")
-    drivers.append("flashinfer")
-except ImportError:
-    print("  - flashinfer not installed")
-
-if not drivers:
-    print("  ⚠️  WARNING: No optimized backend found. vLLM will be slow.")
-
-# 2. FUNCTIONAL TEST
-print("\n[2] Initializing vLLM with 'TinyLlama'...")
-# Use the main guard to prevent multiprocessing recursive loop issues
-if __name__ == "__main__":
-    try:
-        # We disable logging stats to keep output clean
-        llm = LLM(
-            model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-            gpu_memory_utilization=0.6,
-            dtype="float16",
-            disable_log_stats=True
-        )
-        
-        print("\n[3] Generating test token...")
-        sampling_params = SamplingParams(temperature=0, max_tokens=5)
-        output = llm.generate(["Test"], sampling_params)
-        
-        print("\n" + "="*50)
-        print("RESULT:")
-        if output and len(drivers) > 0:
-            print(f"✅ SUCCESS: vLLM is generating using {drivers[0]}.")
-        elif output:
-            print("⚠️  PARTIAL SUCCESS: Generation works, but using unoptimized backend.")
-        else:
-            print("❌ FAILURE: Generation failed.")
-        print("="*50)
-
-    except Exception as e:
-        print(f"\n❌ CRITICAL ERROR: {e}")
-        sys.exit(1)
+# Print results
+for output in outputs:
+    prompt = output.prompt
+    generated_text = output.outputs[0].text
+    print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
 SCRIPT
+Run the test:python vllm_test_flash.py
+Phase 9: Create Startup Scriptcat << 'EOF' > start_vllm.sh
+#!/bin/bash
+source /opt/vllm/venv/bin/activate
+vllm serve "facebook/opt-125m" --host 0.0.0.0 --port 8000
+EOF
 
-python3 vllm_test_flash.py
-
-```
-
----
-
-### Phase 11: Start API Server
-
-Once verified, start the server accessible to your network.
-
-```bash
-python3 -m vllm.entrypoints.openai.api_server \
-  --model Qwen/Qwen2.5-3B-Instruct \
-  --port 8000 \
-  --host 0.0.0.0
-
-```
-
-### Phase 12: Create Snapshot
-
-**Important:** In Proxmox, create a snapshot now.
-`Datacenter` → `Your LXC` → `Snapshots` → `Take Snapshot` (Name: "vLLM-Installed").
-
----
-
-## 🛠️ Troubleshooting
-
-| Problem | Root Cause | Solution |
-| --- | --- | --- |
-| **flash-attn segfault** | CUDA toolkit missing on Proxmox host | **Critical:** Install CUDA on Host AND LXC (Part 1). |
-| **nvidia-smi error** | CUDA toolkit overwrites driver files | Re-run `./NVIDIA...run` installer on Host. |
-| **pipenv ImportError** | Broken system pipenv on Ubuntu | Use `python3 -m venv` (Phase 6). |
-| **OOM compilation** | Not enough RAM for build | Use `export MAX_JOBS=1` before installing. |
-
----
-
-## 📚 References
-
-* **Official Documentation:** [vLLM Docs](https://docs.vllm.ai/en/latest/)
-* **The Paper:** [Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon et al.)](https://arxiv.org/abs/2309.06180)
-* **vLLM vs llama.cpp Analysis:** [Wallaroo.ai Analysis](https://www.wallaroo.ai/)
-* **Proxmox Passthrough:** [En4ble1337's LXC Guide](https://github.com/en4ble1337/GPU-Passthrough-for-Proxmox-LXC-Container)
-
-```
-
-For further visual guidance, you might find this walkthrough helpful:
-[Setup vLLM Local Ai in Proxmox 9 LXC](https://www.youtube.com/watch?v=APBpBFZIVEk)
-
-This video covers the specific combination of Proxmox 9, LXC containers, and vLLM installation that matches your guide's architecture.
-
-
-http://googleusercontent.com/youtube_content/0
-
-```
+chmod +x start_vllm.sh
+5. References & Further ReadingThis guide was compiled using technical documentation and research from the following sources:Core Research & Documentation:vLLM Official DocumentationPaper: "Efficient Memory Management for Large Language Model Serving with PagedAttention" (Kwon et al., arXiv) - Read PaperRunPod Blog: "Introduction to vLLM and PagedAttention" - Read ArticleComparisons & Architecture:Northflank Blog: "vLLM vs Ollama: Key differences, performance, and how to run them"Arm Learning Paths: "Explore llama.cpp architecture and the inference workflow"Red Hat: "What is vLLM?"Community Guides:GPU Passthrough: GitHub - en4ble1337/GPU-Passthrough-for-Proxmox-LXC-Container
